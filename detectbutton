@@ -1,0 +1,252 @@
+-- DetectButtonGUI.lua | UI Version + Copy Support
+-- Detect button click -> tampil UI -> bisa copy satuan/all
+
+local Players = game:GetService("Players")
+local LocalPlayer = Players.LocalPlayer
+local PlayerGui = LocalPlayer:WaitForChild("PlayerGui")
+
+-- =============================================
+-- BUAT UI
+-- =============================================
+local ScreenGui = Instance.new("ScreenGui")
+ScreenGui.Name = "DetectResultUI"
+ScreenGui.ResetOnSpawn = false
+ScreenGui.ZIndexBehavior = Enum.ZIndexBehavior.Sibling
+ScreenGui.Parent = PlayerGui
+
+-- Main Frame
+local MainFrame = Instance.new("Frame")
+MainFrame.Name = "MainFrame"
+MainFrame.Size = UDim2.new(0, 340, 0, 290)
+MainFrame.Position = UDim2.new(0, 10, 0.5, -145)
+MainFrame.BackgroundColor3 = Color3.fromRGB(20, 20, 28)
+MainFrame.BorderSizePixel = 0
+MainFrame.ClipsDescendants = true
+MainFrame.Parent = ScreenGui
+
+Instance.new("UICorner", MainFrame).CornerRadius = UDim.new(0, 10)
+
+-- Title Bar
+local TitleBar = Instance.new("Frame")
+TitleBar.Size = UDim2.new(1, 0, 0, 36)
+TitleBar.BackgroundColor3 = Color3.fromRGB(35, 35, 50)
+TitleBar.BorderSizePixel = 0
+TitleBar.Parent = MainFrame
+Instance.new("UICorner", TitleBar).CornerRadius = UDim.new(0, 10)
+
+local Title = Instance.new("TextLabel")
+Title.Size = UDim2.new(1, -10, 1, 0)
+Title.Position = UDim2.new(0, 10, 0, 0)
+Title.BackgroundTransparency = 1
+Title.Text = "🔍 DetectButtonGUI"
+Title.TextColor3 = Color3.fromRGB(180, 180, 255)
+Title.TextSize = 14
+Title.Font = Enum.Font.GothamBold
+Title.TextXAlignment = Enum.TextXAlignment.Left
+Title.Parent = TitleBar
+
+-- Drag support
+local dragging, dragInput, dragStart, startPos
+TitleBar.InputBegan:Connect(function(input)
+    if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
+        dragging = true
+        dragStart = input.Position
+        startPos = MainFrame.Position
+        input.Changed:Connect(function()
+            if input.UserInputState == Enum.UserInputState.End then dragging = false end
+        end)
+    end
+end)
+TitleBar.InputChanged:Connect(function(input)
+    if input.UserInputType == Enum.UserInputType.MouseMovement or input.UserInputType == Enum.UserInputType.Touch then
+        dragInput = input
+    end
+end)
+game:GetService("UserInputService").InputChanged:Connect(function(input)
+    if input == dragInput and dragging then
+        local delta = input.Position - dragStart
+        MainFrame.Position = UDim2.new(
+            startPos.X.Scale, startPos.X.Offset + delta.X,
+            startPos.Y.Scale, startPos.Y.Offset + delta.Y
+        )
+    end
+end)
+
+-- =============================================
+-- Helper: Buat baris hasil + tombol copy
+-- =============================================
+local rowY = 44
+local resultData = {} -- simpan data terakhir
+
+local function MakeRow(labelText, flagKey, color)
+    local container = Instance.new("Frame")
+    container.Size = UDim2.new(1, -12, 0, 36)
+    container.Position = UDim2.new(0, 6, 0, rowY)
+    container.BackgroundColor3 = Color3.fromRGB(30, 30, 42)
+    container.BorderSizePixel = 0
+    container.Parent = MainFrame
+    Instance.new("UICorner", container).CornerRadius = UDim.new(0, 6)
+
+    local lbl = Instance.new("TextLabel")
+    lbl.Size = UDim2.new(0, 70, 1, 0)
+    lbl.BackgroundTransparency = 1
+    lbl.Text = labelText
+    lbl.TextColor3 = color or Color3.fromRGB(140, 140, 180)
+    lbl.TextSize = 11
+    lbl.Font = Enum.Font.GothamBold
+    lbl.TextXAlignment = Enum.TextXAlignment.Left
+    lbl.Position = UDim2.new(0, 8, 0, 0)
+    lbl.Parent = container
+
+    local val = Instance.new("TextLabel")
+    val.Size = UDim2.new(1, -150, 1, 0)
+    val.Position = UDim2.new(0, 78, 0, 0)
+    val.BackgroundTransparency = 1
+    val.Text = "—"
+    val.TextColor3 = Color3.fromRGB(230, 230, 255)
+    val.TextSize = 11
+    val.Font = Enum.Font.Gotham
+    val.TextXAlignment = Enum.TextXAlignment.Left
+    val.TextTruncate = Enum.TextTruncate.AtEnd
+    val.Parent = container
+
+    local copyBtn = Instance.new("TextButton")
+    copyBtn.Size = UDim2.new(0, 56, 0, 24)
+    copyBtn.Position = UDim2.new(1, -62, 0.5, -12)
+    copyBtn.BackgroundColor3 = Color3.fromRGB(55, 55, 90)
+    copyBtn.Text = "COPY"
+    copyBtn.TextColor3 = Color3.fromRGB(200, 200, 255)
+    copyBtn.TextSize = 10
+    copyBtn.Font = Enum.Font.GothamBold
+    copyBtn.BorderSizePixel = 0
+    copyBtn.Parent = container
+    Instance.new("UICorner", copyBtn).CornerRadius = UDim.new(0, 4)
+
+    copyBtn.MouseButton1Click:Connect(function()
+        if resultData[flagKey] and setclipboard then
+            setclipboard(resultData[flagKey])
+            copyBtn.Text = "✓ OK"
+            copyBtn.BackgroundColor3 = Color3.fromRGB(40, 100, 60)
+            task.delay(1.5, function()
+                copyBtn.Text = "COPY"
+                copyBtn.BackgroundColor3 = Color3.fromRGB(55, 55, 90)
+            end)
+        end
+    end)
+
+    rowY = rowY + 42
+    return val
+end
+
+-- Buat semua baris
+local RowButton  = MakeRow("BUTTON",  "button",  Color3.fromRGB(255, 200, 80))
+local RowPath    = MakeRow("PATH",    "path",    Color3.fromRGB(100, 200, 255))
+local RowScreen  = MakeRow("SCREEN",  "screen",  Color3.fromRGB(180, 255, 180))
+local RowXYZ     = MakeRow("XYZ",     "xyz",     Color3.fromRGB(255, 150, 150))
+local RowVec3    = MakeRow("Vector3", "vec3",    Color3.fromRGB(255, 180, 255))
+
+-- Tombol COPY ALL
+local CopyAllBtn = Instance.new("TextButton")
+CopyAllBtn.Size = UDim2.new(1, -12, 0, 30)
+CopyAllBtn.Position = UDim2.new(0, 6, 0, rowY + 2)
+CopyAllBtn.BackgroundColor3 = Color3.fromRGB(70, 50, 130)
+CopyAllBtn.Text = "📋  COPY ALL"
+CopyAllBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
+CopyAllBtn.TextSize = 12
+CopyAllBtn.Font = Enum.Font.GothamBold
+CopyAllBtn.BorderSizePixel = 0
+CopyAllBtn.Parent = MainFrame
+Instance.new("UICorner", CopyAllBtn).CornerRadius = UDim.new(0, 6)
+
+-- Resize MainFrame sesuai konten
+MainFrame.Size = UDim2.new(0, 340, 0, rowY + 40)
+
+CopyAllBtn.MouseButton1Click:Connect(function()
+    if not next(resultData) then return end
+    local all = table.concat({
+        "BUTTON  : " .. (resultData.button or "—"),
+        "PATH    : " .. (resultData.path   or "—"),
+        "SCREEN  : " .. (resultData.screen or "—"),
+        "XYZ     : " .. (resultData.xyz    or "—"),
+        "Vector3 : " .. (resultData.vec3   or "—"),
+    }, "\n")
+    if setclipboard then
+        setclipboard(all)
+        CopyAllBtn.Text = "✅  COPIED!"
+        CopyAllBtn.BackgroundColor3 = Color3.fromRGB(40, 100, 60)
+        task.delay(1.5, function()
+            CopyAllBtn.Text = "📋  COPY ALL"
+            CopyAllBtn.BackgroundColor3 = Color3.fromRGB(70, 50, 130)
+        end)
+    end
+end)
+
+-- =============================================
+-- Helper fungsi
+-- =============================================
+local function GetPath(obj)
+    local parts = {}
+    local cur = obj
+    while cur and cur ~= game do
+        table.insert(parts, 1, cur.Name)
+        cur = cur.Parent
+    end
+    return table.concat(parts, " > ")
+end
+
+local function GetXYZ()
+    local char = LocalPlayer.Character
+    local hrp = char and char:FindFirstChild("HumanoidRootPart")
+    return hrp and hrp.Position or nil
+end
+
+-- =============================================
+-- Connect setiap button
+-- =============================================
+local function ConnectButton(btn)
+    if not (btn:IsA("TextButton") or btn:IsA("ImageButton")) then return end
+
+    btn.MouseButton1Click:Connect(function()
+        local absPos = btn.AbsolutePosition
+        local xyz    = GetXYZ()
+
+        resultData.button = btn.Name .. (btn.Text ~= "" and (' ("'..btn.Text..'")') or "")
+        resultData.path   = GetPath(btn)
+        resultData.screen = string.format("X=%d | Y=%d", absPos.X, absPos.Y)
+
+        if xyz then
+            resultData.xyz  = string.format("X=%.2f | Y=%.2f | Z=%.2f", xyz.X, xyz.Y, xyz.Z)
+            resultData.vec3 = string.format("Vector3.new(%.3f, %.3f, %.3f)", xyz.X, xyz.Y, xyz.Z)
+        else
+            resultData.xyz  = "karakter tidak ditemukan"
+            resultData.vec3 = "—"
+        end
+
+        -- Update UI
+        RowButton.Text = resultData.button
+        RowPath.Text   = resultData.path
+        RowScreen.Text = resultData.screen
+        RowXYZ.Text    = resultData.xyz
+        RowVec3.Text   = resultData.vec3
+
+        -- Print ke console juga
+        print("[DetectGUI] " .. resultData.button .. " | " .. resultData.vec3)
+    end)
+end
+
+local function ScanGui(guiObj)
+    for _, obj in ipairs(guiObj:GetDescendants()) do ConnectButton(obj) end
+    guiObj.DescendantAdded:Connect(function(obj) task.wait(); ConnectButton(obj) end)
+end
+
+for _, gui in ipairs(PlayerGui:GetChildren()) do
+    if gui ~= ScreenGui then ScanGui(gui) end
+end
+
+PlayerGui.ChildAdded:Connect(function(gui)
+    if gui == ScreenGui then return end
+    task.wait(0.3)
+    ScanGui(gui)
+end)
+
+print("✅ DetectButtonGUI UI aktif! Tap button apapun.")
