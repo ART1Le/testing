@@ -1,49 +1,57 @@
--- DetectButtonGUI.lua | v3 - Mobile Exploit Fix
--- Menggunakan GetGuiObjectsAtPosition agar deteksi tap lebih reliable
+-- DetectButtonGUI.lua | v4 - Ultimate Mobile Exploit Fix
+-- Menggabungkan GetGuiObjectsAtPosition (Tap) dan DescendantAdded (Hook) untuk garansi 100% deteksi
 
 local Players = game:GetService("Players")
 local UIS = game:GetService("UserInputService")
+local CoreGui = game:GetService("CoreGui")
 local LocalPlayer = Players.LocalPlayer
 local PlayerGui = LocalPlayer:WaitForChild("PlayerGui")
 
 -- =============================================
--- BUAT UI
+-- BUAT UI DI COREGUI (Agar aman dari reset dan tidak terdeteksi oleh game)
 -- =============================================
 local ScreenGui = Instance.new("ScreenGui")
-ScreenGui.Name = "DetectResultUI"
+ScreenGui.Name = "DetectResultUI_V4"
 ScreenGui.ResetOnSpawn = false
-ScreenGui.DisplayOrder = 999
-ScreenGui.Parent = PlayerGui
+ScreenGui.DisplayOrder = 99999
+
+-- Coba taruh di CoreGui dulu (jika exploit support), kalau gagal taruh di PlayerGui
+local success = pcall(function()
+    ScreenGui.Parent = CoreGui
+end)
+if not success then
+    ScreenGui.Parent = PlayerGui
+end
 
 local MainFrame = Instance.new("Frame")
-MainFrame.Size = UDim2.new(0, 340, 0, 50) -- akan di-resize setelah row dibuat
+MainFrame.Size = UDim2.new(0, 360, 0, 50)
 MainFrame.Position = UDim2.new(0, 10, 0.5, -140)
-MainFrame.BackgroundColor3 = Color3.fromRGB(20, 20, 28)
+MainFrame.BackgroundColor3 = Color3.fromRGB(15, 15, 20)
 MainFrame.BorderSizePixel = 0
 MainFrame.ClipsDescendants = true
 MainFrame.Parent = ScreenGui
-Instance.new("UICorner", MainFrame).CornerRadius = UDim.new(0, 10)
+Instance.new("UICorner", MainFrame).CornerRadius = UDim.new(0, 8)
 
 -- Title Bar
 local TitleBar = Instance.new("Frame")
-TitleBar.Size = UDim2.new(1, 0, 0, 36)
-TitleBar.BackgroundColor3 = Color3.fromRGB(35, 35, 55)
+TitleBar.Size = UDim2.new(1, 0, 0, 30)
+TitleBar.BackgroundColor3 = Color3.fromRGB(40, 40, 60)
 TitleBar.BorderSizePixel = 0
 TitleBar.Parent = MainFrame
-Instance.new("UICorner", TitleBar).CornerRadius = UDim.new(0, 10)
+Instance.new("UICorner", TitleBar).CornerRadius = UDim.new(0, 8)
 
 local Title = Instance.new("TextLabel")
 Title.Size = UDim2.new(1, -10, 1, 0)
 Title.Position = UDim2.new(0, 10, 0, 0)
 Title.BackgroundTransparency = 1
-Title.Text = "🔍 DetectButtonGUI  (tap button apapun di game)"
-Title.TextColor3 = Color3.fromRGB(180, 180, 255)
+Title.Text = "🔴 RECORDING: Tap Any UI Element"
+Title.TextColor3 = Color3.fromRGB(255, 100, 100)
 Title.TextSize = 12
 Title.Font = Enum.Font.GothamBold
 Title.TextXAlignment = Enum.TextXAlignment.Left
 Title.Parent = TitleBar
 
--- Drag support (mobile & PC)
+-- Drag support
 local dragging, dragInput, dragStart, startPos
 TitleBar.InputBegan:Connect(function(i)
     if i.UserInputType == Enum.UserInputType.MouseButton1 or i.UserInputType == Enum.UserInputType.Touch then
@@ -62,48 +70,48 @@ UIS.InputChanged:Connect(function(i)
 end)
 
 -- =============================================
--- Helper: Buat baris + tombol copy
+-- Helper UI Rows
 -- =============================================
-local rowY = 44
+local rowY = 36
 local resultData = {}
-local rowLabels = {}
 
 local function MakeRow(label, key, color)
     local con = Instance.new("Frame")
-    con.Size = UDim2.new(1, -12, 0, 36)
-    con.Position = UDim2.new(0, 6, 0, rowY)
-    con.BackgroundColor3 = Color3.fromRGB(30, 30, 42)
+    con.Size = UDim2.new(1, -10, 0, 32)
+    con.Position = UDim2.new(0, 5, 0, rowY)
+    con.BackgroundColor3 = Color3.fromRGB(25, 25, 35)
     con.BorderSizePixel = 0
     con.Parent = MainFrame
     Instance.new("UICorner", con).CornerRadius = UDim.new(0, 6)
 
     local lbl = Instance.new("TextLabel")
-    lbl.Size = UDim2.new(0, 68, 1, 0)
+    lbl.Size = UDim2.new(0, 65, 1, 0)
     lbl.Position = UDim2.new(0, 8, 0, 0)
     lbl.BackgroundTransparency = 1
     lbl.Text = label
-    lbl.TextColor3 = color or Color3.fromRGB(140, 140, 200)
+    lbl.TextColor3 = color
     lbl.TextSize = 11
     lbl.Font = Enum.Font.GothamBold
     lbl.TextXAlignment = Enum.TextXAlignment.Left
     lbl.Parent = con
 
-    local val = Instance.new("TextLabel")
-    val.Size = UDim2.new(1, -148, 1, 0)
-    val.Position = UDim2.new(0, 78, 0, 0)
+    local val = Instance.new("TextBox") -- Pakai TextBox agar teks bisa digeser/dibaca penuh
+    val.Size = UDim2.new(1, -140, 1, 0)
+    val.Position = UDim2.new(0, 75, 0, 0)
     val.BackgroundTransparency = 1
     val.Text = "—"
-    val.TextColor3 = Color3.fromRGB(230, 230, 255)
-    val.TextSize = 11
-    val.Font = Enum.Font.Gotham
+    val.TextColor3 = Color3.fromRGB(220, 220, 220)
+    val.TextSize = 10
+    val.Font = Enum.Font.Code
     val.TextXAlignment = Enum.TextXAlignment.Left
-    val.TextTruncate = Enum.TextTruncate.AtEnd
+    val.ClearTextOnFocus = false
+    val.TextEditable = false
     val.Parent = con
 
     local btn = Instance.new("TextButton")
-    btn.Size = UDim2.new(0, 56, 0, 24)
-    btn.Position = UDim2.new(1, -62, 0.5, -12)
-    btn.BackgroundColor3 = Color3.fromRGB(55, 55, 90)
+    btn.Size = UDim2.new(0, 50, 0, 22)
+    btn.Position = UDim2.new(1, -55, 0.5, -11)
+    btn.BackgroundColor3 = Color3.fromRGB(50, 50, 80)
     btn.Text = "COPY"
     btn.TextColor3 = Color3.fromRGB(200, 200, 255)
     btn.TextSize = 10
@@ -115,131 +123,149 @@ local function MakeRow(label, key, color)
     btn.MouseButton1Click:Connect(function()
         if resultData[key] and setclipboard then
             setclipboard(resultData[key])
-            btn.Text = "✓ OK"
-            btn.BackgroundColor3 = Color3.fromRGB(40, 110, 60)
-            task.delay(1.5, function() btn.Text = "COPY"; btn.BackgroundColor3 = Color3.fromRGB(55, 55, 90) end)
+            btn.Text = "OK"
+            btn.BackgroundColor3 = Color3.fromRGB(40, 100, 50)
+            task.delay(1, function() btn.Text = "COPY"; btn.BackgroundColor3 = Color3.fromRGB(50, 50, 80) end)
         end
     end)
 
-    rowY = rowY + 42
+    rowY = rowY + 36
     return val
 end
 
-local RowButton  = MakeRow("BUTTON",  "button",  Color3.fromRGB(255, 200, 80))
-local RowPath    = MakeRow("PATH",    "path",    Color3.fromRGB(100, 200, 255))
-local RowScreen  = MakeRow("SCREEN",  "screen",  Color3.fromRGB(180, 255, 180))
-local RowXYZ     = MakeRow("XYZ",     "xyz",     Color3.fromRGB(255, 150, 150))
-local RowVec3    = MakeRow("Vector3", "vec3",    Color3.fromRGB(255, 180, 255))
+local RowName   = MakeRow("NAME",     "name",    Color3.fromRGB(255, 200, 80))
+local RowPath   = MakeRow("PATH",     "path",    Color3.fromRGB(100, 200, 255))
+local RowType   = MakeRow("TYPE",     "type",    Color3.fromRGB(200, 150, 255))
+local RowScreen = MakeRow("SCREEN",   "screen",  Color3.fromRGB(150, 255, 150))
+local RowVec3   = MakeRow("VECTOR3",  "vec3",    Color3.fromRGB(255, 150, 150))
 
--- Tombol COPY ALL
+-- Copy All
 local CopyAll = Instance.new("TextButton")
-CopyAll.Size = UDim2.new(1, -12, 0, 30)
-CopyAll.Position = UDim2.new(0, 6, 0, rowY + 4)
-CopyAll.BackgroundColor3 = Color3.fromRGB(70, 50, 130)
-CopyAll.Text = "📋  COPY ALL"
+CopyAll.Size = UDim2.new(1, -10, 0, 28)
+CopyAll.Position = UDim2.new(0, 5, 0, rowY + 4)
+CopyAll.BackgroundColor3 = Color3.fromRGB(70, 40, 100)
+CopyAll.Text = "📋 COPY ALL DATA"
 CopyAll.TextColor3 = Color3.fromRGB(255, 255, 255)
-CopyAll.TextSize = 12
+CopyAll.TextSize = 11
 CopyAll.Font = Enum.Font.GothamBold
 CopyAll.BorderSizePixel = 0
 CopyAll.Parent = MainFrame
 Instance.new("UICorner", CopyAll).CornerRadius = UDim.new(0, 6)
 
+MainFrame.Size = UDim2.new(0, 360, 0, rowY + 40)
+
 CopyAll.MouseButton1Click:Connect(function()
     if not next(resultData) then return end
-    local all = "BUTTON  : " .. (resultData.button or "—") .. "\n"
-             .. "PATH    : " .. (resultData.path   or "—") .. "\n"
-             .. "SCREEN  : " .. (resultData.screen or "—") .. "\n"
-             .. "XYZ     : " .. (resultData.xyz    or "—") .. "\n"
-             .. "Vector3 : " .. (resultData.vec3   or "—")
+    local str = "NAME    : " .. (resultData.name or "") .. "\n" ..
+                "PATH    : " .. (resultData.path or "") .. "\n" ..
+                "TYPE    : " .. (resultData.type or "") .. "\n" ..
+                "SCREEN  : " .. (resultData.screen or "") .. "\n" ..
+                "VECTOR3 : " .. (resultData.vec3 or "")
     if setclipboard then
-        setclipboard(all)
-        CopyAll.Text = "✅  COPIED!"
-        CopyAll.BackgroundColor3 = Color3.fromRGB(40, 110, 60)
-        task.delay(1.5, function() CopyAll.Text = "📋  COPY ALL"; CopyAll.BackgroundColor3 = Color3.fromRGB(70, 50, 130) end)
+        setclipboard(str)
+        CopyAll.Text = "✅ COPIED!"
+        CopyAll.BackgroundColor3 = Color3.fromRGB(40, 100, 50)
+        task.delay(1, function() CopyAll.Text = "📋 COPY ALL DATA"; CopyAll.BackgroundColor3 = Color3.fromRGB(70, 40, 100) end)
     end
 end)
 
--- Resize frame
-MainFrame.Size = UDim2.new(0, 340, 0, rowY + 44)
-
 -- =============================================
--- Helper fungsi
+-- LOGIC
 -- =============================================
 local function GetPath(obj)
-    local parts = {}
-    local cur = obj
-    while cur and cur ~= game do
-        table.insert(parts, 1, cur.Name)
-        cur = cur.Parent
-    end
-    return table.concat(parts, " > ")
+    local p = {}
+    local c = obj
+    while c and c ~= game do table.insert(p, 1, c.Name); c = c.Parent end
+    return table.concat(p, ".")
 end
 
-local function GetXYZ()
+local function GetVector3()
     local char = LocalPlayer.Character
     local hrp = char and char:FindFirstChild("HumanoidRootPart")
     return hrp and hrp.Position or nil
 end
 
--- =============================================
--- [FIX MOBILE] Deteksi tap pakai GetGuiObjectsAtPosition
--- Ini jauh lebih reliable daripada MouseButton1Click untuk exploit
--- =============================================
-local lastDetected = ""
+local function UpdateUI(obj)
+    if not obj or not obj.Parent then return end
+    if obj:IsDescendantOf(ScreenGui) then return end
 
-local function HandleTap(tapPos)
-    -- Ambil semua GUI object di posisi tap
-    local objects = PlayerGui:GetGuiObjectsAtPosition(tapPos.X, tapPos.Y)
+    local absPos = obj.AbsolutePosition or Vector2.new(0,0)
+    local v3 = GetVector3()
 
-    for _, obj in ipairs(objects) do
-        -- Skip UI kita sendiri
-        if obj:IsDescendantOf(ScreenGui) then continue end
+    resultData.name   = obj.Name
+    resultData.path   = GetPath(obj)
+    resultData.type   = obj.ClassName
+    resultData.screen = string.format("X:%d, Y:%d", absPos.X, absPos.Y)
+    
+    if v3 then
+        resultData.vec3 = string.format("Vector3.new(%.2f, %.2f, %.2f)", v3.X, v3.Y, v3.Z)
+    else
+        resultData.vec3 = "N/A"
+    end
 
-        if obj:IsA("TextButton") or obj:IsA("ImageButton") then
-            local key = GetPath(obj) -- hindari deteksi ganda
-            if key == lastDetected then break end
-            lastDetected = key
+    RowName.Text   = resultData.name
+    RowPath.Text   = resultData.path
+    RowType.Text   = resultData.type
+    RowScreen.Text = resultData.screen
+    RowVec3.Text   = resultData.vec3
 
-            task.delay(0.5, function() lastDetected = "" end)
+    Title.Text = "🟢 DETECTED: " .. obj.Name
+    Title.TextColor3 = Color3.fromRGB(100, 255, 100)
+    task.delay(1, function()
+        Title.Text = "🔴 RECORDING: Tap Any UI Element"
+        Title.TextColor3 = Color3.fromRGB(255, 100, 100)
+    end)
+end
 
-            local absPos = obj.AbsolutePosition
-            local xyz    = GetXYZ()
-
-            resultData.button = obj.Name .. (obj.Text ~= "" and (' ("' .. obj.Text .. '")') or "")
-            resultData.path   = key
-            resultData.screen = string.format("X=%d | Y=%d", absPos.X, absPos.Y)
-
-            if xyz then
-                resultData.xyz  = string.format("X=%.2f | Y=%.2f | Z=%.2f", xyz.X, xyz.Y, xyz.Z)
-                resultData.vec3 = string.format("Vector3.new(%.3f, %.3f, %.3f)", xyz.X, xyz.Y, xyz.Z)
-            else
-                resultData.xyz  = "karakter tidak ditemukan"
-                resultData.vec3 = "—"
+-- METHOD 1: Track Any GUI Interaction (Paling Ampuh di Mobile)
+-- Menggunakan InputBegan pada level GUI secara global
+UIS.InputBegan:Connect(function(input, processed)
+    if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
+        
+        -- Beri jeda sedikit agar game memproses klik/tap-nya
+        task.wait(0.05) 
+        
+        -- Ambil semua GUI di posisi jari kita
+        local pos = input.Position
+        local guisAtPosition = PlayerGui:GetGuiObjectsAtPosition(pos.X, pos.Y)
+        
+        -- Filter hasil
+        for _, gui in ipairs(guisAtPosition) do
+            -- Abaikan background transparan/frame penutup layar utuh
+            if gui.BackgroundTransparency < 1 or gui:IsA("TextButton") or gui:IsA("ImageButton") or gui:IsA("TextBox") or gui:IsA("TextLabel") or gui:IsA("ImageLabel") then
+                UpdateUI(gui)
+                break -- Hanya ambil yang paling atas
             end
-
-            -- Update UI
-            RowButton.Text = resultData.button
-            RowPath.Text   = resultData.path
-            RowScreen.Text = resultData.screen
-            RowXYZ.Text    = resultData.xyz
-            RowVec3.Text   = resultData.vec3
-
-            print("[DetectGUI] " .. resultData.button .. " | " .. resultData.vec3)
-            break -- hanya ambil button pertama yang ketap
         end
+    end
+end)
+
+-- METHOD 2: Inject Event langusng ke button
+-- Berguna jika game memblokir GetGuiObjectsAtPosition
+local function HookButton(btn)
+    if btn:IsA("GuiObject") then
+        pcall(function()
+            -- Listeners
+            if btn:IsA("TextButton") or btn:IsA("ImageButton") then
+                btn.MouseButton1Down:Connect(function() UpdateUI(btn) end)
+                btn.Activated:Connect(function() UpdateUI(btn) end)
+            end
+            
+            -- Mobile touch spesifik
+            btn.InputBegan:Connect(function(input)
+                if input.UserInputType == Enum.UserInputType.Touch or input.UserInputType == Enum.UserInputType.MouseButton1 then
+                    UpdateUI(btn)
+                end
+            end)
+        end)
     end
 end
 
--- Touch (Mobile)
-UIS.TouchTap:Connect(function(positions, processed)
-    HandleTap(positions[1])
-end)
+-- Scan existing & future UI
+local function Scan(parent)
+    for _, child in ipairs(parent:GetDescendants()) do HookButton(child) end
+    parent.DescendantAdded:Connect(HookButton)
+end
+Scan(PlayerGui)
 
--- Mouse Click (PC fallback)
-UIS.InputBegan:Connect(function(input, processed)
-    if input.UserInputType == Enum.UserInputType.MouseButton1 then
-        HandleTap(input.Position)
-    end
-end)
-
-print("✅ DetectButtonGUI v3 aktif! Tap/klik button apapun di game.")
+print("✅ DetectButtonGUI v4 (Ultimate) Aktif!")
